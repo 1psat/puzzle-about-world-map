@@ -6,202 +6,170 @@
     <title>Пазл физическая карты Мира</title>
     <style>
         body {
+            margin: 0;
             font-family: Arial, sans-serif;
             background-image: url('background.png');
             background-size: cover;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            background-position: center;
         }
-
         h1 {
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-            margin-bottom: 20px;
-        }
-
-        .controls {
-            margin-bottom: 20px;
             text-align: center;
+            color: white;
+            margin-top: 20px;
         }
-
-        .controls select, .controls button {
-            font-size: 16px;
-            padding: 5px 10px;
-            margin: 5px;
+        #controls {
+            display: flex;
+            justify-content: center;
+            margin: 20px;
         }
-
-        #puzzle-container {
-            position: relative;
+        #game {
             display: grid;
-            gap: 2px;
-            background: #444;
+            justify-content: center;
+            margin: 0 auto;
+            background-color: white;
+            border: 2px solid black;
         }
-
         .piece {
             position: relative;
-            background-size: 100% 100%;
-            cursor: grab;
+            user-select: none;
+            touch-action: none;
+            background-size: cover;
         }
-
-        .hidden {
-            display: none;
-        }
-
-        .complete-message {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 20px;
-            border-radius: 10px;
-            display: none;
-            z-index: 100;
-            text-align: center;
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin: 0 5px;
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
     <h1>Пазл физическая карты Мира</h1>
-    <div class="controls">
-        <label for="difficulty">Выберите сложность:</label>
+    <div id="controls">
         <select id="difficulty">
             <option value="4">4 x 4</option>
             <option value="6">6 x 6</option>
             <option value="8">8 x 8</option>
         </select>
-        <button onclick="startGame()">Старт</button>
+        <button id="start">Старт</button>
     </div>
-
-    <div id="puzzle-container"></div>
-
-    <div class="complete-message" id="complete-message">
-        <p>Поздравляю, вы завершили пазл!</p>
-        <p id="time-display"></p>
-        <button onclick="closeMessage()">Закрыть</button>
-    </div>
+    <div id="game"></div>
 
     <script>
-        const container = document.getElementById('puzzle-container');
-        const completeMessage = document.getElementById('complete-message');
-        const timeDisplay = document.getElementById('time-display');
-        let pieces = [];
-        let startTime;
+        const gameContainer = document.getElementById('game');
+        const startButton = document.getElementById('start');
+        const difficultySelector = document.getElementById('difficulty');
+        let timerStart;
 
-        function startGame() {
-            const difficulty = parseInt(document.getElementById('difficulty').value);
-            container.innerHTML = '';
-            pieces = [];
-            const size = container.offsetWidth / difficulty;
-            container.style.gridTemplateColumns = `repeat(${difficulty}, 1fr)`;
-            container.style.width = '90vmin';
-            container.style.height = '90vmin';
+        function initializeGame(size) {
+            gameContainer.innerHTML = '';
+            gameContainer.style.gridTemplateColumns = `repeat(${size}, 1fr)`;
+            gameContainer.style.gridTemplateRows = `repeat(${size}, 1fr)`;
 
-            const image = new Image();
-            image.src = 'puzzle.png';
-            image.onload = () => {
-                for (let i = 0; i < difficulty * difficulty; i++) {
-                    const row = Math.floor(i / difficulty);
-                    const col = i % difficulty;
-                    const piece = document.createElement('div');
-                    piece.className = 'piece';
-                    piece.style.width = `${size}px`;
-                    piece.style.height = `${size}px`;
-                    piece.style.backgroundImage = `url(${image.src})`;
-                    piece.style.backgroundPosition = `-${col * size}px -${row * size}px`;
-                    piece.setAttribute('data-index', i);
-                    piece.draggable = true;
-
-                    piece.addEventListener('dragstart', dragStart);
-                    piece.addEventListener('dragover', dragOver);
-                    piece.addEventListener('drop', drop);
-
-                    pieces.push(piece);
-                }
-
-                shuffleArray(pieces);
-                pieces.forEach(p => container.appendChild(p));
-                startTime = Date.now();
-            };
-        }
-
-        function dragStart(e) {
-            e.dataTransfer.setData('text/plain', e.target.getAttribute('data-index'));
-        }
-
-        function dragOver(e) {
-            e.preventDefault();
-        }
-
-        function drop(e) {
-            e.preventDefault();
-            const fromIndex = e.dataTransfer.getData('text');
-            const toIndex = e.target.getAttribute('data-index');
-            if (fromIndex !== toIndex) {
-                const fromPiece = pieces[fromIndex];
-                const toPiece = pieces[toIndex];
-                container.replaceChild(fromPiece, toPiece);
-                container.appendChild(toPiece);
-                pieces[fromIndex] = toPiece;
-                pieces[toIndex] = fromPiece;
-                checkCompletion();
+            const pieceSize = 100 / size;
+            let positions = [];
+            for (let i = 0; i < size * size; i++) {
+                positions.push(i);
             }
+
+            positions = positions.sort(() => Math.random() - 0.5);
+
+            for (let i = 0; i < size * size; i++) {
+                const piece = document.createElement('div');
+                piece.classList.add('piece');
+                piece.style.width = `${pieceSize}%`;
+                piece.style.height = `${pieceSize}%`;
+                piece.style.backgroundImage = "url('map.png')";
+                piece.style.backgroundSize = `${size * 100}% ${size * 100}%`;
+                piece.style.backgroundPosition = `${(i % size) * (100 / (size - 1))}% ${Math.floor(i / size) * (100 / (size - 1))}%`;
+                piece.setAttribute('data-index', i);
+                piece.draggable = true;
+                addDragAndTouchListeners(piece);
+                gameContainer.appendChild(piece);
+            }
+            timerStart = Date.now();
+        }
+
+        function addDragAndTouchListeners(piece) {
+            let startX, startY, startLeft, startTop, currentPiece;
+
+            piece.addEventListener('dragstart', (e) => {
+                currentPiece = e.target;
+                e.dataTransfer.effectAllowed = 'move';
+            });
+
+            piece.addEventListener('touchstart', (e) => {
+                currentPiece = e.target;
+                const touch = e.touches[0];
+                startX = touch.clientX;
+                startY = touch.clientY;
+                const rect = currentPiece.getBoundingClientRect();
+                startLeft = rect.left;
+                startTop = rect.top;
+            });
+
+            piece.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+
+            piece.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const targetPiece = e.target;
+                swapPieces(currentPiece, targetPiece);
+            });
+
+            piece.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const touch = e.touches[0];
+                const deltaX = touch.clientX - startX;
+                const deltaY = touch.clientY - startY;
+                currentPiece.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+            });
+
+            piece.addEventListener('touchend', (e) => {
+                currentPiece.style.transform = '';
+                const rect = gameContainer.getBoundingClientRect();
+                const x = e.changedTouches[0].clientX - rect.left;
+                const y = e.changedTouches[0].clientY - rect.top;
+                const targetPiece = document.elementFromPoint(x, y);
+                if (targetPiece && targetPiece.classList.contains('piece')) {
+                    swapPieces(currentPiece, targetPiece);
+                }
+            });
+        }
+
+        function swapPieces(piece1, piece2) {
+            const index1 = piece1.getAttribute('data-index');
+            const index2 = piece2.getAttribute('data-index');
+            const tempIndex = index1;
+
+            piece1.setAttribute('data-index', index2);
+            piece2.setAttribute('data-index', tempIndex);
+
+            const tempBackgroundPosition = piece1.style.backgroundPosition;
+            piece1.style.backgroundPosition = piece2.style.backgroundPosition;
+            piece2.style.backgroundPosition = tempBackgroundPosition;
+
+            checkCompletion();
         }
 
         function checkCompletion() {
-            for (let i = 0; i < pieces.length; i++) {
-                if (parseInt(pieces[i].getAttribute('data-index')) !== i) return;
-            }
-            const timeElapsed = Math.floor((Date.now() - startTime) / 1000);
-            timeDisplay.textContent = `Ваше время: ${timeElapsed} секунд.`;
-            completeMessage.style.display = 'block';
-        }
+            const pieces = Array.from(gameContainer.children);
+            const isComplete = pieces.every((piece, index) => {
+                return piece.getAttribute('data-index') == index;
+            });
 
-        function closeMessage() {
-            completeMessage.style.display = 'none';
-        }
-
-        function shuffleArray(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
+            if (isComplete) {
+                const timeTaken = ((Date.now() - timerStart) / 1000).toFixed(2);
+                setTimeout(() => {
+                    alert(`Поздравляю вы завершили пазл! Время: ${timeTaken} секунд`);
+                }, 200);
             }
         }
 
-        // Ensure touch support for dragging
-        document.addEventListener('touchstart', function(e) {
-            if (e.target.classList.contains('piece')) {
-                e.target.draggable = false;
-                const touch = e.touches[0];
-                e.target.style.position = 'absolute';
-                e.target.style.zIndex = '1000';
-
-                function moveAt(pageX, pageY) {
-                    e.target.style.left = pageX - e.target.offsetWidth / 2 + 'px';
-                    e.target.style.top = pageY - e.target.offsetHeight / 2 + 'px';
-                }
-
-                moveAt(touch.pageX, touch.pageY);
-
-                function onTouchMove(event) {
-                    const touch = event.touches[0];
-                    moveAt(touch.pageX, touch.pageY);
-                }
-
-                document.addEventListener('touchmove', onTouchMove);
-
-                e.target.addEventListener('touchend', function() {
-                    document.removeEventListener('touchmove', onTouchMove);
-                    e.target.style.zIndex = '';
-                    e.target.style.position = '';
-                }, { once: true });
-            }
+        startButton.addEventListener('click', () => {
+            const size = parseInt(difficultySelector.value);
+            initializeGame(size);
         });
     </script>
 </body>
