@@ -91,14 +91,20 @@
             startGame();
         };
 
-        // Start the game
-        function startGame() {
-            const difficulty = document.getElementById('difficulty').value;
-            rows = cols = parseInt(difficulty);
-            canvas.width = puzzleImage.width;
-            canvas.height = puzzleImage.height;
+        // Adjust canvas size for responsiveness
+        function adjustCanvasSize() {
+            const maxWidth = Math.min(window.innerWidth, 600); // Limit size for larger screens
+            canvas.width = maxWidth;
+            canvas.height = (puzzleImage.height / puzzleImage.width) * maxWidth;
             pieceWidth = canvas.width / cols;
             pieceHeight = canvas.height / rows;
+        }
+
+        // Start the game
+        function startGame() {
+            adjustCanvasSize();
+            const difficulty = document.getElementById('difficulty').value;
+            rows = cols = parseInt(difficulty);
             pieces = [];
             startTime = Date.now();
             createPieces();
