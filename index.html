@@ -7,53 +7,69 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            text-align: center;
-            background: url('background.png') no-repeat center center fixed;
+            background-image: url('background.png');
             background-size: cover;
             margin: 0;
             padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
         }
 
         h1 {
             color: white;
-            margin: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+            margin-bottom: 20px;
         }
 
-        .menu {
-            margin: 20px;
+        .controls {
+            margin-bottom: 20px;
+            text-align: center;
         }
 
-        .menu button {
-            padding: 10px 20px;
-            margin: 5px;
+        .controls select, .controls button {
             font-size: 16px;
-            cursor: pointer;
+            padding: 5px 10px;
+            margin: 5px;
         }
 
         #puzzle-container {
             position: relative;
-            margin: auto;
-            display: none;
-            max-width: 90%;
+            display: grid;
+            gap: 2px;
+            background: #444;
         }
 
         .piece {
-            position: absolute;
+            position: relative;
+            background-size: 100% 100%;
             cursor: grab;
-            border: 1px solid #000;
         }
 
-        #timer {
+        .hidden {
+            display: none;
+        }
+
+        .complete-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.8);
             color: white;
-            font-size: 20px;
-            margin-top: 20px;
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            z-index: 100;
+            text-align: center;
         }
     </style>
 </head>
 <body>
     <h1>Пазл физическая карты Мира</h1>
-
-    <div class="menu">
+    <div class="controls">
         <label for="difficulty">Выберите сложность:</label>
         <select id="difficulty">
             <option value="4">4 x 4</option>
@@ -65,25 +81,90 @@
 
     <div id="puzzle-container"></div>
 
-    <div id="timer">Время: 0 секунд</div>
+    <div class="complete-message" id="complete-message">
+        <p>Поздравляю, вы завершили пазл!</p>
+        <p id="time-display"></p>
+        <button onclick="closeMessage()">Закрыть</button>
+    </div>
 
     <script>
-        const puzzleContainer = document.getElementById('puzzle-container');
-        const timerElement = document.getElementById('timer');
-        let time = 0;
-        let timerInterval;
+        const container = document.getElementById('puzzle-container');
+        const completeMessage = document.getElementById('complete-message');
+        const timeDisplay = document.getElementById('time-display');
+        let pieces = [];
+        let startTime;
 
-        function startTimer() {
-            time = 0;
-            clearInterval(timerInterval);
-            timerInterval = setInterval(() => {
-                time++;
-                timerElement.textContent = `Время: ${time} секунд`;
-            }, 1000);
+        function startGame() {
+            const difficulty = parseInt(document.getElementById('difficulty').value);
+            container.innerHTML = '';
+            pieces = [];
+            const size = container.offsetWidth / difficulty;
+            container.style.gridTemplateColumns = `repeat(${difficulty}, 1fr)`;
+            container.style.width = '90vmin';
+            container.style.height = '90vmin';
+
+            const image = new Image();
+            image.src = 'puzzle-image.png';
+            image.onload = () => {
+                for (let i = 0; i < difficulty * difficulty; i++) {
+                    const row = Math.floor(i / difficulty);
+                    const col = i % difficulty;
+                    const piece = document.createElement('div');
+                    piece.className = 'piece';
+                    piece.style.width = `${size}px`;
+                    piece.style.height = `${size}px`;
+                    piece.style.backgroundImage = `url(${image.src})`;
+                    piece.style.backgroundPosition = `-${col * size}px -${row * size}px`;
+                    piece.setAttribute('data-index', i);
+                    piece.draggable = true;
+
+                    piece.addEventListener('dragstart', dragStart);
+                    piece.addEventListener('dragover', dragOver);
+                    piece.addEventListener('drop', drop);
+
+                    pieces.push(piece);
+                }
+
+                shuffleArray(pieces);
+                pieces.forEach(p => container.appendChild(p));
+                startTime = Date.now();
+            };
         }
 
-        function stopTimer() {
-            clearInterval(timerInterval);
+        function dragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.getAttribute('data-index'));
+        }
+
+        function dragOver(e) {
+            e.preventDefault();
+        }
+
+        function drop(e) {
+            e.preventDefault();
+            const fromIndex = e.dataTransfer.getData('text');
+            const toIndex = e.target.getAttribute('data-index');
+            if (fromIndex !== toIndex) {
+                const fromPiece = pieces[fromIndex];
+                const toPiece = pieces[toIndex];
+                container.replaceChild(fromPiece, toPiece);
+                container.appendChild(toPiece);
+                pieces[fromIndex] = toPiece;
+                pieces[toIndex] = fromPiece;
+                checkCompletion();
+            }
+        }
+
+        function checkCompletion() {
+            for (let i = 0; i < pieces.length; i++) {
+                if (parseInt(pieces[i].getAttribute('data-index')) !== i) return;
+            }
+            const timeElapsed = Math.floor((Date.now() - startTime) / 1000);
+            timeDisplay.textContent = `Ваше время: ${timeElapsed} секунд.`;
+            completeMessage.style.display = 'block';
+        }
+
+        function closeMessage() {
+            completeMessage.style.display = 'none';
         }
 
         function shuffleArray(array) {
@@ -93,96 +174,35 @@
             }
         }
 
-        function startGame() {
-            const difficulty = parseInt(document.getElementById('difficulty').value);
-            const image = new Image();
-            image.src = 'puzzle.png';
-            image.onload = () => {
-                setupPuzzle(image, difficulty);
-                startTimer();
-            };
-        }
+        // Ensure touch support for dragging
+        document.addEventListener('touchstart', function(e) {
+            if (e.target.classList.contains('piece')) {
+                e.target.draggable = false;
+                const touch = e.touches[0];
+                e.target.style.position = 'absolute';
+                e.target.style.zIndex = '1000';
 
-        function setupPuzzle(image, gridSize) {
-            puzzleContainer.innerHTML = '';
-            puzzleContainer.style.width = `${image.width}px`;
-            puzzleContainer.style.height = `${image.height}px`;
-            puzzleContainer.style.display = 'block';
-
-            const pieceWidth = image.width / gridSize;
-            const pieceHeight = image.height / gridSize;
-            const positions = [];
-
-            for (let y = 0; y < gridSize; y++) {
-                for (let x = 0; x < gridSize; x++) {
-                    positions.push({ x: x * pieceWidth, y: y * pieceHeight });
+                function moveAt(pageX, pageY) {
+                    e.target.style.left = pageX - e.target.offsetWidth / 2 + 'px';
+                    e.target.style.top = pageY - e.target.offsetHeight / 2 + 'px';
                 }
+
+                moveAt(touch.pageX, touch.pageY);
+
+                function onTouchMove(event) {
+                    const touch = event.touches[0];
+                    moveAt(touch.pageX, touch.pageY);
+                }
+
+                document.addEventListener('touchmove', onTouchMove);
+
+                e.target.addEventListener('touchend', function() {
+                    document.removeEventListener('touchmove', onTouchMove);
+                    e.target.style.zIndex = '';
+                    e.target.style.position = '';
+                }, { once: true });
             }
-
-            shuffleArray(positions);
-
-            positions.forEach((pos, index) => {
-                const piece = document.createElement('div');
-                piece.classList.add('piece');
-                piece.style.width = `${pieceWidth}px`;
-                piece.style.height = `${pieceHeight}px`;
-                piece.style.backgroundImage = `url('${image.src}')`;
-                piece.style.backgroundSize = `${image.width}px ${image.height}px`;
-                piece.style.backgroundPosition = `-${(index % gridSize) * pieceWidth}px -${Math.floor(index / gridSize) * pieceHeight}px`;
-                piece.style.left = `${pos.x}px`;
-                piece.style.top = `${pos.y}px`;
-
-                piece.draggable = true;
-                piece.addEventListener('dragstart', (e) => {
-                    e.dataTransfer.setData('text/plain', index);
-                });
-
-                puzzleContainer.appendChild(piece);
-            });
-
-            puzzleContainer.addEventListener('dragover', (e) => {
-                e.preventDefault();
-            });
-
-            puzzleContainer.addEventListener('drop', (e) => {
-                e.preventDefault();
-                const draggedIndex = e.dataTransfer.getData('text');
-                const droppedPiece = e.target;
-
-                if (droppedPiece.classList.contains('piece')) {
-                    const draggedPiece = puzzleContainer.children[draggedIndex];
-
-                    const draggedLeft = draggedPiece.style.left;
-                    const draggedTop = draggedPiece.style.top;
-
-                    draggedPiece.style.left = droppedPiece.style.left;
-                    draggedPiece.style.top = droppedPiece.style.top;
-
-                    droppedPiece.style.left = draggedLeft;
-                    droppedPiece.style.top = draggedTop;
-                }
-
-                checkWinCondition(gridSize, pieceWidth, pieceHeight);
-            });
-        }
-
-        function checkWinCondition(gridSize, pieceWidth, pieceHeight) {
-            let correctPieces = 0;
-
-            Array.from(puzzleContainer.children).forEach((piece, index) => {
-                const correctX = (index % gridSize) * pieceWidth;
-                const correctY = Math.floor(index / gridSize) * pieceHeight;
-
-                if (parseInt(piece.style.left) === correctX && parseInt(piece.style.top) === correctY) {
-                    correctPieces++;
-                }
-            });
-
-            if (correctPieces === gridSize * gridSize) {
-                stopTimer();
-                alert(`Поздравляем! Вы собрали пазл за ${time} секунд.`);
-            }
-        }
+        });
     </script>
 </body>
 </html>
