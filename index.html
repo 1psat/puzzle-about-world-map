@@ -8,7 +8,7 @@
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            background: url('background-image.jpg') no-repeat center center fixed;
+            background: url('background.png') no-repeat center center fixed;
             background-size: cover;
             margin: 0;
             padding: 0;
@@ -96,7 +96,7 @@
         function startGame() {
             const difficulty = parseInt(document.getElementById('difficulty').value);
             const image = new Image();
-            image.src = 'puzzle-image.jpg';
+            image.src = 'puzzle.png';
             image.onload = () => {
                 setupPuzzle(image, difficulty);
                 startTimer();
