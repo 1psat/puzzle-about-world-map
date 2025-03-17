@@ -82,25 +82,14 @@
         <button onclick="closeMessage()">Закрыть</button>
     </div>
 
-    <audio id="backgroundMusic" loop>
-        <source src="background_music.mp3" type="audio/mpeg">
-    </audio>
-
-    <audio id="winSound">
-        <source src="win_sound.mp3" type="audio/mpeg">
-    </audio>
-
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const finishMessage = document.getElementById('finishMessage');
         const timeTakenText = document.getElementById('timeTaken');
-        const backgroundMusic = document.getElementById('backgroundMusic');
-        const winSound = document.getElementById('winSound');
 
         let puzzleImage = new Image();
         puzzleImage.src = 'world_map.png';
-
         let pieces = [];
         let rows = 4, cols = 4;
         let pieceWidth, pieceHeight;
@@ -108,15 +97,10 @@
         let draggedPiece = null;
         let offsetX, offsetY;
 
-        puzzleImage.onload = () => {
-            adjustCanvasSize();
-            startGame();
-        };
-
         function adjustCanvasSize() {
             const maxWidth = Math.min(window.innerWidth - 20, 600);
-            canvas.width = Math.min(puzzleImage.width, maxWidth);
-            canvas.height = (puzzleImage.height / puzzleImage.width) * canvas.width;
+            canvas.width = maxWidth;
+            canvas.height = maxWidth;
             pieceWidth = canvas.width / cols;
             pieceHeight = canvas.height / rows;
         }
@@ -130,8 +114,6 @@
             createPieces();
             shufflePieces();
             drawPuzzle();
-            backgroundMusic.currentTime = 0;
-            backgroundMusic.play();
         }
 
         function createPieces() {
@@ -160,28 +142,57 @@
         }
 
         function checkSolved() {
-            for (const piece of pieces) {
-                if (Math.abs(piece.x - piece.sx) > pieceWidth / 4 || Math.abs(piece.y - piece.sy) > pieceHeight / 4) {
-                    return false;
-                }
-            }
-            return true;
+            return pieces.every(piece => Math.abs(piece.x - piece.sx) < pieceWidth / 4 && Math.abs(piece.y - piece.sy) < pieceHeight / 4);
         }
 
         function showFinishMessage() {
             const endTime = Date.now();
-            const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
-            timeTakenText.textContent = `Время выполнения: ${timeTaken} секунд.`;
+            timeTakenText.textContent = `Время выполнения: ${((endTime - startTime) / 1000).toFixed(2)} секунд.`;
             finishMessage.style.display = 'block';
-            backgroundMusic.pause();
-            winSound.currentTime = 0;
-            winSound.play();
         }
 
         function closeMessage() {
             finishMessage.style.display = 'none';
         }
+
+        canvas.addEventListener('mousedown', startDragging);
+        canvas.addEventListener('mousemove', dragging);
+        canvas.addEventListener('mouseup', dropPiece);
+
+        function startDragging(e) {
+            const mousePos = getMousePos(e);
+            draggedPiece = pieces.find(piece => isInsidePiece(mousePos, piece));
+            if (draggedPiece) {
+                offsetX = mousePos.x - draggedPiece.x;
+                offsetY = mousePos.y - draggedPiece.y;
+            }
+        }
+
+        function dragging(e) {
+            if (!draggedPiece) return;
+            const mousePos = getMousePos(e);
+            draggedPiece.x = mousePos.x - offsetX;
+            draggedPiece.y = mousePos.y - offsetY;
+            drawPuzzle();
+        }
+
+        function dropPiece() {
+            if (!draggedPiece) return;
+            draggedPiece = null;
+            drawPuzzle();
+            if (checkSolved()) showFinishMessage();
+        }
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        function isInsidePiece(pos, piece) {
+            return pos.x > piece.x && pos.x < piece.x + pieceWidth && pos.y > piece.y && pos.y < piece.y + pieceHeight;
+        }
+
+        puzzleImage.onload = startGame;
     </script>
 </body>
-
 </html>
