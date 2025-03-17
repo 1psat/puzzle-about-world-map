@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Пазл физическая карты Мира</title>
+    <title>GeoPuzzle</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -27,9 +27,19 @@
             text-align: center;
         }
 
+        label {
+            color: white;
+        }
+
+        #difficulty {
+            color: white;
+        }
+
         #gameCanvas {
             border: 2px solid black;
             touch-action: none;
+            max-width: 100%;
+            height: auto;
         }
 
         #finishMessage {
@@ -55,7 +65,7 @@
 </head>
 
 <body>
-    <h1>Пазл физическая карты Мира</h1>
+    <h1>GeoPuzzle</h1>
     <div id="controls">
         <label for="difficulty">Выберите сложность:</label>
         <select id="difficulty">
@@ -72,12 +82,25 @@
         <button onclick="closeMessage()">Закрыть</button>
     </div>
 
+    <audio id="backgroundMusic" loop>
+        <source src="background_music.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="winSound">
+        <source src="win_sound.mp3" type="audio/mpeg">
+    </audio>
+
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const finishMessage = document.getElementById('finishMessage');
         const timeTakenText = document.getElementById('timeTaken');
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const winSound = document.getElementById('winSound');
+
         let puzzleImage = new Image();
+        puzzleImage.src = 'world_map.png';
+
         let pieces = [];
         let rows = 4, cols = 4;
         let pieceWidth, pieceHeight;
@@ -85,34 +108,32 @@
         let draggedPiece = null;
         let offsetX, offsetY;
 
-        // Load puzzle image
-        puzzleImage.src = 'puzzle.png';
         puzzleImage.onload = () => {
+            adjustCanvasSize();
             startGame();
         };
 
-        // Adjust canvas size for responsiveness
         function adjustCanvasSize() {
-            const maxWidth = Math.min(window.innerWidth, 600); // Limit size for larger screens
-            canvas.width = maxWidth;
-            canvas.height = (puzzleImage.height / puzzleImage.width) * maxWidth;
+            const maxWidth = Math.min(window.innerWidth - 20, 600);
+            canvas.width = Math.min(puzzleImage.width, maxWidth);
+            canvas.height = (puzzleImage.height / puzzleImage.width) * canvas.width;
             pieceWidth = canvas.width / cols;
             pieceHeight = canvas.height / rows;
         }
 
-        // Start the game
         function startGame() {
-            adjustCanvasSize();
             const difficulty = document.getElementById('difficulty').value;
             rows = cols = parseInt(difficulty);
+            adjustCanvasSize();
             pieces = [];
             startTime = Date.now();
             createPieces();
             shufflePieces();
             drawPuzzle();
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.play();
         }
 
-        // Create pieces
         function createPieces() {
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < cols; col++) {
@@ -126,12 +147,10 @@
             }
         }
 
-        // Shuffle pieces
         function shufflePieces() {
             pieces.sort(() => Math.random() - 0.5);
         }
 
-        // Draw the puzzle
         function drawPuzzle() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             for (const piece of pieces) {
@@ -140,7 +159,6 @@
             }
         }
 
-        // Detect if the puzzle is solved
         function checkSolved() {
             for (const piece of pieces) {
                 if (Math.abs(piece.x - piece.sx) > pieceWidth / 4 || Math.abs(piece.y - piece.sy) > pieceHeight / 4) {
@@ -150,79 +168,18 @@
             return true;
         }
 
-        // Show finish message
         function showFinishMessage() {
             const endTime = Date.now();
             const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
             timeTakenText.textContent = `Время выполнения: ${timeTaken} секунд.`;
             finishMessage.style.display = 'block';
+            backgroundMusic.pause();
+            winSound.currentTime = 0;
+            winSound.play();
         }
 
-        // Close finish message
         function closeMessage() {
             finishMessage.style.display = 'none';
-            startGame();
-        }
-
-        // Drag and drop functionality
-        canvas.addEventListener('mousedown', startDragging);
-        canvas.addEventListener('touchstart', startDragging);
-        canvas.addEventListener('mousemove', dragging);
-        canvas.addEventListener('touchmove', dragging);
-        canvas.addEventListener('mouseup', dropPiece);
-        canvas.addEventListener('touchend', dropPiece);
-
-        function startDragging(e) {
-            e.preventDefault();
-            const mousePos = getMousePos(e);
-            draggedPiece = pieces.find(piece => isInsidePiece(mousePos, piece));
-            if (draggedPiece) {
-                offsetX = mousePos.x - draggedPiece.x;
-                offsetY = mousePos.y - draggedPiece.y;
-            }
-        }
-
-        function dragging(e) {
-            if (!draggedPiece) return;
-            e.preventDefault();
-            const mousePos = getMousePos(e);
-            draggedPiece.x = mousePos.x - offsetX;
-            draggedPiece.y = mousePos.y - offsetY;
-            drawPuzzle();
-        }
-
-        function dropPiece(e) {
-            if (!draggedPiece) return;
-            e.preventDefault();
-            const targetX = Math.round(draggedPiece.x / pieceWidth) * pieceWidth;
-            const targetY = Math.round(draggedPiece.y / pieceHeight) * pieceHeight;
-
-            if (Math.abs(targetX - draggedPiece.sx) < pieceWidth / 2 && Math.abs(targetY - draggedPiece.sy) < pieceHeight / 2) {
-                draggedPiece.x = draggedPiece.sx;
-                draggedPiece.y = draggedPiece.sy;
-            }
-
-            draggedPiece = null;
-            drawPuzzle();
-
-            if (checkSolved()) {
-                showFinishMessage();
-            }
-        }
-
-        function getMousePos(e) {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.touches ? e.touches[0].clientX : e.clientX;
-            const y = e.touches ? e.touches[0].clientY : e.clientY;
-            return {
-                x: x - rect.left,
-                y: y - rect.top
-            };
-        }
-
-        function isInsidePiece(pos, piece) {
-            return pos.x > piece.x && pos.x < piece.x + pieceWidth &&
-                pos.y > piece.y && pos.y < piece.y + pieceHeight;
         }
     </script>
 </body>
