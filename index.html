@@ -145,36 +145,67 @@
             };
         }
 
+        // Drag and drop functionality
+        canvas.addEventListener('mousedown', startDragging);
+        canvas.addEventListener('touchstart', startDragging);
+        canvas.addEventListener('mousemove', dragging);
+        canvas.addEventListener('touchmove', dragging);
+        canvas.addEventListener('mouseup', dropPiece);
+        canvas.addEventListener('touchend', dropPiece);
+
         function startDragging(e) {
-            const pos = getMousePos(e);
-            draggedPiece = pieces.find(p => pos.x > p.x && pos.x < p.x + pieceWidth && pos.y > p.y && pos.y < p.y + pieceHeight);
+            e.preventDefault();
+            const mousePos = getMousePos(e);
+            draggedPiece = pieces.find(piece => isInsidePiece(mousePos, piece));
             if (draggedPiece) {
-                offsetX = pos.x - draggedPiece.x;
-                offsetY = pos.y - draggedPiece.y;
+                offsetX = mousePos.x - draggedPiece.x;
+                offsetY = mousePos.y - draggedPiece.y;
             }
         }
 
         function dragging(e) {
             if (!draggedPiece) return;
-            const pos = getMousePos(e);
-            draggedPiece.x = pos.x - offsetX;
-            draggedPiece.y = pos.y - offsetY;
+            e.preventDefault();
+            const mousePos = getMousePos(e);
+            draggedPiece.x = mousePos.x - offsetX;
+            draggedPiece.y = mousePos.y - offsetY;
             drawPuzzle();
         }
 
-        function dropPiece() {
+        function dropPiece(e) {
             if (!draggedPiece) return;
+            e.preventDefault();
+            const targetX = Math.round(draggedPiece.x / pieceWidth) * pieceWidth;
+            const targetY = Math.round(draggedPiece.y / pieceHeight) * pieceHeight;
+
+            if (Math.abs(targetX - draggedPiece.sx) < pieceWidth / 2 && Math.abs(targetY - draggedPiece.sy) < pieceHeight / 2) {
+                draggedPiece.x = draggedPiece.sx;
+                draggedPiece.y = draggedPiece.sy;
+            }
+
             draggedPiece = null;
             drawPuzzle();
+
+            if (checkSolved()) {
+                showFinishMessage();
+            }
         }
 
-        canvas.addEventListener('mousedown', startDragging);
-        canvas.addEventListener('mousemove', dragging);
-        canvas.addEventListener('mouseup', dropPiece);
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.touches ? e.touches[0].clientX : e.clientX;
+            const y = e.touches ? e.touches[0].clientY : e.clientY;
+            return {
+                x: x - rect.left,
+                y: y - rect.top
+            };
+        }
 
-        canvas.addEventListener('touchstart', startDragging);
-        canvas.addEventListener('touchmove', dragging);
-        canvas.addEventListener('touchend', dropPiece);
+        function isInsidePiece(pos, piece) {
+            return pos.x > piece.x && pos.x < piece.x + pieceWidth &&
+                pos.y > piece.y && pos.y < piece.y + pieceHeight;
+        }
+
     </script>
 </body>
 
