@@ -127,6 +127,24 @@
             drawPuzzle();
         }
 
+                    // Play background music
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.play();
+        }
+
+                // Show finish message
+        function showFinishMessage() {
+            const endTime = Date.now();
+            const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+            timeTakenText.textContent = `Время выполнения: ${timeTaken} секунд.`;
+            finishMessage.style.display = 'block';
+
+            // Stop background music and play win sound
+            backgroundMusic.pause();
+            winSound.currentTime = 0;
+            winSound.play();
+        }
+
         function createPieces() {
             for (let row = 0; row < rows; row++) {
                 for (let col = 0; col < cols; col++) {
