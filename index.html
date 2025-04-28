@@ -169,6 +169,10 @@
             const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
             timeTakenText.textContent = `Время выполнения: ${timeTaken} секунд.`;
             finishMessage.style.display = 'block';
+
+            backgroundMusic.pause();
+            winSound.currentTime = 0;
+            winSound.play();
         }
 
         function closeMessage() {
